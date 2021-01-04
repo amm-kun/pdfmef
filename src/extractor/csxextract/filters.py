@@ -1,3 +1,7 @@
+import logging
+# import PyPDF2
+import PyPDF2
+
 from extraction.runnables import Filter, RunnableError
 import extractor.csxextract.config as config
 import extraction.utils
@@ -47,4 +51,26 @@ class AcademicPaperFilter(Filter):
       else:
          raise RunnableError('Last line of output from Jar should be either "true" or "false". Instead was: ' + result)
 
+class SimpleAcademicPaperFilter(Filter):
+
+   def filter(self, data, dependency_results):
+      try:
+         # Write the pdf data to a temporary location so PyPdf can process it
+         path = extraction.utils.temp_file(data, suffix='.pdf')
+         reader = PyPDF2.PdfFileReader(open(path, 'rb'))
+      except Exception as e:
+         logging.error('pypdf2 Failed to read PDF:::%s', e)
+         return False
+
+      page_width, page_height = reader.getPage(0).mediaBox[-2:]
+
+      if reader.getNumPages() < 50:
+         if page_width < page_height:
+            return True
+         else:
+            logging.error('issue with PDF page dimensions:::%s')
+            return False
+      else:
+         logging.error('Page limit Exceeded:::%s')
+         return False
 
